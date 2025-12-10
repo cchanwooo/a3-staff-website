@@ -12,25 +12,55 @@ const Contact = () => {
         email: '',
         message: ''
     });
+    const [status, setStatus] = useState('');   // ✅ 전송 상태 메시지
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    // ✅ mailto 대신 우리가 만든 /api/send-request 로 보내는 버전
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setStatus('Sending...');
 
-        const recipients = "john@a3staffsolutions.com,simon@a3staffsolutions.com,vanessa@a3staffsolutions.com";
-        const subject = `New Contact Message: ${formData.name}`;
-        const body = `
-Name: ${formData.name}
-Email: ${formData.email}
-Message: ${formData.message}
+        try {
+            const response = await fetch('/api/send-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name: formData.name,
+                    email: formData.email,
+                    message: formData.message,
+                    // 백엔드에서 받는 나머지 필드는 일단 빈 값으로 보냄
+                    phone: '',
+                    location: '',
+                    subject: '',
+                }),
+            });
 
-(Sent from A3 Staff Solutions Website)
-        `.trim();
-
-        window.location.href = `mailto:${recipients}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            if (response.ok) {
+                setStatus('Message sent successfully! We will contact you soon.');
+                setFormData({
+                    name: '',
+                    email: '',
+                    message: '',
+                });
+            } else {
+                let errorMsg = 'Failed to send message. Please try again.';
+                try {
+                    const data = await response.json();
+                    if (data?.message) errorMsg = data.message;
+                } catch (err) {
+                    // JSON이 아니어도 그냥 기본 메시지 사용
+                }
+                setStatus(errorMsg);
+            }
+        } catch (error) {
+            console.error('Submission Error:', error);
+            setStatus('An error occurred. Please try again later.');
+        }
     };
 
     return (
@@ -79,7 +109,7 @@ Message: ${formData.message}
                                 <div className="ml-4">
                                     <h3 className="text-lg font-medium text-gray-900">{t('contact.email')}</h3>
                                     <p className="mt-1 text-gray-600">
-                                        {t('contact.email')}: john@a3staffsolutions.com
+                                        {t('contact.email')}: john@a3staffsolutions.com,simon@a3staffsolutions.com
                                     </p>
                                 </div>
                             </div>
@@ -130,6 +160,13 @@ Message: ${formData.message}
                             <Button type="submit" className="w-full justify-center">
                                 {t('contact.submitBtn')}
                             </Button>
+
+                            {/* ✅ 전송 상태 메시지 표시 */}
+                            {status && (
+                                <p className="text-sm mt-2 text-gray-600">
+                                    {status}
+                                </p>
+                            )}
                         </form>
                     </div>
                 </div>

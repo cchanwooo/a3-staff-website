@@ -11,16 +11,34 @@ const Apply = () => {
         experience: '',
     });
 
+    const [status, setStatus] = useState('');
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    // 🚀 mailto → /api/send-request 로 전송하는 API 방식
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setStatus('Sending...');
 
-        const recipients = "john@a3staffsolutions.com,simon@a3staffsolutions.com,vanessa@a3staffsolutions.com";
-        const subject = `New Job Application: ${formData.fullName}`;
-        const body = `
+        try {
+            const response = await fetch('/api/send-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+
+                // 서버에서 받는 변수에 맞춰 변환
+                body: JSON.stringify({
+                    name: formData.fullName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    subject: `New Job Application: ${formData.fullName}`,
+                    location: '',
+                    message: `
+Job Application Details
+
 Name: ${formData.fullName}
 Email: ${formData.email}
 Phone: ${formData.phone}
@@ -28,9 +46,34 @@ Trade: ${formData.trade}
 Experience: ${formData.experience}
 
 (Sent from A3 Staff Solutions Website)
-        `.trim();
+                    `.trim(),
+                }),
+            });
 
-        window.location.href = `mailto:${recipients}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            if (response.ok) {
+                setStatus('Application submitted successfully! We will contact you soon.');
+
+                // 폼 초기화
+                setFormData({
+                    fullName: '',
+                    email: '',
+                    phone: '',
+                    trade: '',
+                    experience: '',
+                });
+            } else {
+                let errorMsg = 'Failed to send application.';
+                try {
+                    const data = await response.json();
+                    if (data?.message) errorMsg = data.message;
+                } catch { }
+
+                setStatus(errorMsg);
+            }
+        } catch (error) {
+            console.error('Submission error:', error);
+            setStatus('An unexpected error occurred. Please try again later.');
+        }
     };
 
     return (
@@ -53,6 +96,7 @@ Experience: ${formData.experience}
                                     onChange={handleChange}
                                     required
                                 />
+
                                 <Input
                                     id="phone"
                                     label="Phone Number"
@@ -119,6 +163,12 @@ Experience: ${formData.experience}
                                     Submit Application
                                 </Button>
                             </div>
+
+                            {status && (
+                                <p className="mt-3 text-sm text-gray-600">
+                                    {status}
+                                </p>
+                            )}
                         </form>
                     </div>
                 </div>

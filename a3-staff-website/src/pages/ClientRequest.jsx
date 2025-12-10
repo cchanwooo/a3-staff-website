@@ -12,27 +12,72 @@ const ClientRequest = () => {
         message: ''
     });
 
+    const [status, setStatus] = useState('');
+
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.id]: e.target.value });
     };
 
-    const handleSubmit = (e) => {
+    // 🚀 mailto → /api/send-request POST 방식으로 교체
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        setStatus('Sending...');
 
-        const recipients = "john@a3staffsolutions.com,simon@a3staffsolutions.com,vanessa@a3staffsolutions.com";
-        const subject = `New Staffing Request: ${formData.companyName}`;
-        const body = `
+        try {
+            const response = await fetch('/api/send-request', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+
+                // send-request.js 와 동일한 변수명에 맞춰서 전달
+                body: JSON.stringify({
+                    name: `${formData.contactName} (${formData.companyName})`,
+                    email: formData.email,
+                    phone: formData.phone,
+                    location: '',
+                    subject: `New Staffing Request: ${formData.companyName}`,
+                    message: `
 Company: ${formData.companyName}
 Contact: ${formData.contactName}
 Email: ${formData.email}
 Phone: ${formData.phone}
-Staffing Needs: ${formData.staffingNeeds}
-Message: ${formData.message}
+
+Staffing Needs:
+${formData.staffingNeeds}
+
+Additional Details:
+${formData.message}
 
 (Sent from A3 Staff Solutions Website)
-        `.trim();
+                    `.trim(),
+                }),
+            });
 
-        window.location.href = `mailto:${recipients}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+            if (response.ok) {
+                setStatus('Request sent successfully! We will contact you soon.');
+
+                // Reset form
+                setFormData({
+                    companyName: '',
+                    contactName: '',
+                    email: '',
+                    phone: '',
+                    staffingNeeds: '',
+                    message: ''
+                });
+            } else {
+                let errorMsg = 'Failed to send request. Please try again.';
+                try {
+                    const data = await response.json();
+                    if (data?.message) errorMsg = data.message;
+                } catch { }
+                setStatus(errorMsg);
+            }
+        } catch (error) {
+            console.error('Submission Error:', error);
+            setStatus('An unexpected error occurred. Please try again later.');
+        }
     };
 
     return (
@@ -47,6 +92,7 @@ Message: ${formData.message}
 
                 <div className="bg-gray-50 rounded-xl p-8 md:p-10 shadow-sm border border-gray-100">
                     <form onSubmit={handleSubmit} className="space-y-6">
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <Input
                                 id="companyName"
@@ -56,6 +102,7 @@ Message: ${formData.message}
                                 onChange={handleChange}
                                 required
                             />
+
                             <Input
                                 id="contactName"
                                 label="Contact Person"
@@ -76,6 +123,7 @@ Message: ${formData.message}
                                 onChange={handleChange}
                                 required
                             />
+
                             <Input
                                 id="phone"
                                 label="Phone Number"
@@ -96,6 +144,7 @@ Message: ${formData.message}
                                 className="w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-primary-900 focus:border-primary-900 bg-white"
                                 value={formData.staffingNeeds}
                                 onChange={handleChange}
+                                required
                             >
                                 <option value="">Select all that apply...</option>
                                 <option value="Welders">Welders</option>
@@ -124,6 +173,10 @@ Message: ${formData.message}
                                 Send Request
                             </Button>
                         </div>
+
+                        {status && (
+                            <p className="mt-4 text-sm text-gray-600">{status}</p>
+                        )}
                     </form>
                 </div>
             </div>
